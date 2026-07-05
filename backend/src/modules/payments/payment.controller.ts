@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import path from "path";
 
 import {
   createPayment,
@@ -12,15 +11,7 @@ import {
 } from "./payment.service";
 
 import { createPaymentSchema } from "./payment.validation";
-
-function buildPublicUrl(req: Request, filePath: string) {
-  const uploadsRoot = path.resolve("uploads");
-  const relativePath = path
-    .relative(uploadsRoot, filePath)
-    .replace(/\\/g, "/");
-
-  return `${req.protocol}://${req.get("host")}/uploads/${relativePath}`;
-}
+import { uploadImageBufferToCloudinary } from "../../services/cloudinary.service";
 
 export async function create(req: Request, res: Response) {
   try {
@@ -33,10 +24,23 @@ export async function create(req: Request, res: Response) {
       });
     }
 
+    if (!req.file.buffer) {
+      return res.status(400).json({
+        success: false,
+        message: "No se pudo procesar la imagen del comprobante.",
+      });
+    }
+
     const user = (req as any).user;
 
+    const uploadedReceipt = await uploadImageBufferToCloudinary(
+      req.file.buffer,
+      req.file.mimetype,
+      "edu-platform/receipts"
+    );
+
     const receipt = {
-      receiptUrl: req.file ? buildPublicUrl(req, req.file.path) : undefined,
+      receiptUrl: uploadedReceipt.url,
       receiptName: req.file?.originalname,
       receiptMimeType: req.file?.mimetype,
       receiptSize: req.file?.size,

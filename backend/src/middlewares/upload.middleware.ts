@@ -2,6 +2,16 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
+function buildFileFilter(allowedMimeTypes: string[]) {
+  return (_req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      return cb(new Error("Tipo de archivo no permitido"));
+    }
+
+    cb(null, true);
+  };
+}
+
 function createUploadMiddleware(destination: string, allowedMimeTypes: string[], maxSize = 25 * 1024 * 1024) {
   const uploadDir = path.resolve(destination);
 
@@ -24,17 +34,21 @@ function createUploadMiddleware(destination: string, allowedMimeTypes: string[],
     limits: {
       fileSize: maxSize,
     },
-    fileFilter(req, file, cb) {
-      if (!allowedMimeTypes.includes(file.mimetype)) {
-        return cb(new Error("Tipo de archivo no permitido"));
-      }
-
-      cb(null, true);
-    },
+    fileFilter: buildFileFilter(allowedMimeTypes),
   });
 }
 
-export const uploadReceipt = createUploadMiddleware("uploads/receipts", [
+function createMemoryUploadMiddleware(allowedMimeTypes: string[], maxSize = 25 * 1024 * 1024) {
+  return multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: maxSize,
+    },
+    fileFilter: buildFileFilter(allowedMimeTypes),
+  });
+}
+
+export const uploadReceipt = createMemoryUploadMiddleware([
   "image/png",
   "image/jpeg",
   "image/jpg",

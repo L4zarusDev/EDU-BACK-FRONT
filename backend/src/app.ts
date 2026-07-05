@@ -13,12 +13,19 @@ import membershipRoutes from "./modules/membership/membership.routes";
 
 const app = express();
 
+function normalizeOrigin(origin: string) {
+  return origin.trim().replace(/\/+$/, "");
+}
+
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   ...(process.env.CORS_ORIGINS?.split(",") ?? []),
 ]
   .map((origin) => origin?.trim())
-  .filter((origin): origin is string => Boolean(origin));
+  .filter((origin): origin is string => Boolean(origin))
+  .map(normalizeOrigin);
+
+const allowedOriginSet = new Set(allowedOrigins);
 
 app.use(
   cors({
@@ -29,7 +36,9 @@ app.use(
         return;
       }
 
-      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      const normalizedOrigin = normalizeOrigin(origin);
+
+      if (allowedOriginSet.size === 0 || allowedOriginSet.has(normalizedOrigin)) {
         callback(null, true);
         return;
       }

@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum MembershipStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id       String  @id @default(cuid())
+  name     String
+  email    String  @unique
+  password String
+  phone    String?
+
+  role Role @default(STUDENT)
+
+  isActive Boolean @default(true)
+
+  // Relaciones
+
+  membership Membership?
+
+  payments Payment[] @relation("UserPayments")
+
+  reviewedPayments Payment[] @relation("PaymentReviewer")
+
+  createdCourses Course[] @relation("CourseCreator")
+
+  courseProgress CourseProgress[]
+
+  lessonProgress LessonProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Membership {
+  id String @id @default(cuid())
+
+  userId String @unique
+
+  status MembershipStatus @default(PENDING)
+
+  startsAt DateTime?
+
+  expiresAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  amount Float
+
+  months Int
+
+  // Archivo del comprobante
+  receiptUrl String?
+
+  receiptName String?
+
+  receiptMimeType String?
+
+  receiptSize Int?
+
+  reference String?
+
+  status PaymentStatus @default(PENDING)
+
+  membershipId String
+
+  membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+
+  userId String
+
+  user User @relation("UserPayments", fields: [userId], references: [id])
+
+  reviewedById String?
+
+  reviewedBy User? @relation("PaymentReviewer", fields: [reviewedById], references: [id])
+
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([membershipId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Category {
+  id String @id @default(cuid())
+
+  name        String  @unique
+  description String?
+
+  isActive Boolean @default(true)
+
+  order Int @default(0)
+
+  courses Course[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Course {
+  id String @id @default(cuid())
+
+  title String
+  slug  String @unique
+
+  description String @db.Text
+
+  thumbnail String?
+
+  isPremium Boolean @default(false)
+
+  published Boolean @default(false)
+
+  deletedAt DateTime?
+
+  estimatedHours Int?
+
+  creatorId String
+
+  creator User @relation("CourseCreator", fields: [creatorId], references: [id])
+
+  categoryId String
+
+  category Category @relation(fields: [categoryId], references: [id])
+
+  lessons Lesson[]
+
+  progress CourseProgress[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@index([creatorId])
+  @@index([categoryId])
+  @@index([published])
+  @@index([isPremium])
+}
+
+model Lesson {
+  id String @id @default(cuid())
+
+  title       String
+  description String?
+
+  videoUrl String?
+  pdfUrl   String?
+
+  order Int @default(0)
+
+  duration  Int?
+  isPreview Boolean @default(false)
+  published Boolean @default(false)
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  lessonProgress LessonProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CourseProgress {
+  id String @id @default(cuid())
+
+  userId String
+
+  courseId String
+
+  progress Int @default(0)
+
+  completed Boolean @default(false)
+
+  completedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LessonProgress {
+  id String @id @default(cuid())
+
+  userId   String
+  lessonId String
+
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, lessonId])
+}
+
+model SystemSetting {
+  id String @id @default(cuid())
+
+  key String @unique
+
+  value String @db.Text
+
+  description String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}

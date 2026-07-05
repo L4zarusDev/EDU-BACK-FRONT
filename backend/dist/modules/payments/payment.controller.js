@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.create = create;
 exports.myPayments = myPayments;
@@ -7,8 +10,16 @@ exports.pending = pending;
 exports.getOne = getOne;
 exports.approve = approve;
 exports.reject = reject;
+const path_1 = __importDefault(require("path"));
 const payment_service_1 = require("./payment.service");
 const payment_validation_1 = require("./payment.validation");
+function buildPublicUrl(req, filePath) {
+    const uploadsRoot = path_1.default.resolve("uploads");
+    const relativePath = path_1.default
+        .relative(uploadsRoot, filePath)
+        .replace(/\\/g, "/");
+    return `${req.protocol}://${req.get("host")}/uploads/${relativePath}`;
+}
 async function create(req, res) {
     try {
         const body = payment_validation_1.createPaymentSchema.parse(req.body);
@@ -20,7 +31,7 @@ async function create(req, res) {
         }
         const user = req.user;
         const receipt = {
-            receiptUrl: req.file?.path,
+            receiptUrl: req.file ? buildPublicUrl(req, req.file.path) : undefined,
             receiptName: req.file?.originalname,
             receiptMimeType: req.file?.mimetype,
             receiptSize: req.file?.size,

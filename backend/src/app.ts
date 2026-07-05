@@ -13,7 +13,32 @@ import membershipRoutes from "./modules/membership/membership.routes";
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  ...(process.env.CORS_ORIGINS?.split(",") ?? []),
+]
+  .map((origin) => origin?.trim())
+  .filter((origin): origin is string => Boolean(origin));
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Allow server-to-server tools (curl/Postman) and same-origin requests.
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origen no permitido por CORS"));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 app.get("/", (_, res) => {

@@ -1,7 +1,4 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.create = create;
 exports.myPayments = myPayments;
@@ -10,16 +7,9 @@ exports.pending = pending;
 exports.getOne = getOne;
 exports.approve = approve;
 exports.reject = reject;
-const path_1 = __importDefault(require("path"));
 const payment_service_1 = require("./payment.service");
 const payment_validation_1 = require("./payment.validation");
-function buildPublicUrl(req, filePath) {
-    const uploadsRoot = path_1.default.resolve("uploads");
-    const relativePath = path_1.default
-        .relative(uploadsRoot, filePath)
-        .replace(/\\/g, "/");
-    return `${req.protocol}://${req.get("host")}/uploads/${relativePath}`;
-}
+const cloudinary_service_1 = require("../../services/cloudinary.service");
 async function create(req, res) {
     try {
         const body = payment_validation_1.createPaymentSchema.parse(req.body);
@@ -29,9 +19,16 @@ async function create(req, res) {
                 message: "Debes adjuntar una imagen del comprobante.",
             });
         }
+        if (!req.file.buffer) {
+            return res.status(400).json({
+                success: false,
+                message: "No se pudo procesar la imagen del comprobante.",
+            });
+        }
         const user = req.user;
+        const uploadedReceipt = await (0, cloudinary_service_1.uploadImageBufferToCloudinary)(req.file.buffer, req.file.mimetype, "edu-platform/receipts");
         const receipt = {
-            receiptUrl: req.file ? buildPublicUrl(req, req.file.path) : undefined,
+            receiptUrl: uploadedReceipt.url,
             receiptName: req.file?.originalname,
             receiptMimeType: req.file?.mimetype,
             receiptSize: req.file?.size,

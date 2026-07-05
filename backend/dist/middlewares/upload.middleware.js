@@ -7,6 +7,14 @@ exports.uploadLessonMedia = exports.uploadCourseThumbnail = exports.uploadReceip
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+function buildFileFilter(allowedMimeTypes) {
+    return (_req, file, cb) => {
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+            return cb(new Error("Tipo de archivo no permitido"));
+        }
+        cb(null, true);
+    };
+}
 function createUploadMiddleware(destination, allowedMimeTypes, maxSize = 25 * 1024 * 1024) {
     const uploadDir = path_1.default.resolve(destination);
     if (!fs_1.default.existsSync(uploadDir)) {
@@ -26,15 +34,19 @@ function createUploadMiddleware(destination, allowedMimeTypes, maxSize = 25 * 10
         limits: {
             fileSize: maxSize,
         },
-        fileFilter(req, file, cb) {
-            if (!allowedMimeTypes.includes(file.mimetype)) {
-                return cb(new Error("Tipo de archivo no permitido"));
-            }
-            cb(null, true);
-        },
+        fileFilter: buildFileFilter(allowedMimeTypes),
     });
 }
-exports.uploadReceipt = createUploadMiddleware("uploads/receipts", [
+function createMemoryUploadMiddleware(allowedMimeTypes, maxSize = 25 * 1024 * 1024) {
+    return (0, multer_1.default)({
+        storage: multer_1.default.memoryStorage(),
+        limits: {
+            fileSize: maxSize,
+        },
+        fileFilter: buildFileFilter(allowedMimeTypes),
+    });
+}
+exports.uploadReceipt = createMemoryUploadMiddleware([
     "image/png",
     "image/jpeg",
     "image/jpg",

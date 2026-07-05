@@ -15,12 +15,17 @@ const dashboard_routes_1 = __importDefault(require("./modules/admin/dashboard.ro
 const category_routes_1 = __importDefault(require("./modules/categories/category.routes"));
 const membership_routes_1 = __importDefault(require("./modules/membership/membership.routes"));
 const app = (0, express_1.default)();
+function normalizeOrigin(origin) {
+    return origin.trim().replace(/\/+$/, "");
+}
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     ...(process.env.CORS_ORIGINS?.split(",") ?? []),
 ]
     .map((origin) => origin?.trim())
-    .filter((origin) => Boolean(origin));
+    .filter((origin) => Boolean(origin))
+    .map(normalizeOrigin);
+const allowedOriginSet = new Set(allowedOrigins);
 app.use((0, cors_1.default)({
     origin(origin, callback) {
         // Allow server-to-server tools (curl/Postman) and same-origin requests.
@@ -28,7 +33,8 @@ app.use((0, cors_1.default)({
             callback(null, true);
             return;
         }
-        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        const normalizedOrigin = normalizeOrigin(origin);
+        if (allowedOriginSet.size === 0 || allowedOriginSet.has(normalizedOrigin)) {
             callback(null, true);
             return;
         }
